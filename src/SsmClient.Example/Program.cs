@@ -9,19 +9,17 @@ namespace SsmClient.Example
     {
         private static void Main()
         {
+            // https://screenshotmonitor.com/account
             const string xSsmToken = "xSsmToken";
 
             var client = new SsmClient(xSsmToken);
 
             var commonData = client.GetCommonData();
-
-            foreach (var companyDto in commonData.companies)
-                Console.WriteLine(companyDto.name);
             
             // Can be one or zero companies where Account is manager
             var companyManager = commonData.companies.SingleOrDefault(c => c.isManager);
 
-            //Only manager  can edit data
+            //Only manager can edit this data
             if (companyManager != null)
             {
                 var projectId = Guid.NewGuid();
@@ -52,24 +50,25 @@ namespace SsmClient.Example
                 client.SetConfigValue(new SetConfigValueDto {employmentId = companyManager.employments.Last(e=>e.endDate ==null).id, key = "autoPauseMinutes", value = 15});
 
                 // Invite new employee to your team
-                //client.InviteEmployee(new IniviteEmployeeDto {email = "mail@gmail.com"});
+                client.InviteEmployee(new IniviteEmployeeDto {email = "mail@gmail.com"});
 
                 // Set Alias for employment
-                //client.SetEmploymentName(new EmploymentSetNameDto {id = companyManager.employments.First(e => e.endDate == null).id, name = "Alias"});
+                client.SetEmploymentName(new EmploymentSetNameDto {id = companyManager.employments.First(e => e.endDate == null).id, name = "Alias"});
             }
 
-            // Can be many or zero companies where Account is manager
+            // Can be many or zero companies where Account is employee
             var companyEmployee = commonData.companies.FirstOrDefault(c => !c.isManager);
             
             if (companyEmployee != null)
             {
                 var twoDaysAgo =  DateTime.UtcNow.AddDays(-2);
+                var activitiId = Guid.NewGuid();
 
                 //Only employee can add activities
                 client.AddOfflineActivity(new ActivityAddOfflineDto
                 {
                     employmentId = companyEmployee.employments.First().id,
-                    id = Guid.NewGuid(),
+                    id = activitiId ,
                     projectId = null,
                     note = "Offline Activity",
                     from = ToUnixTimeStamp(twoDaysAgo),
@@ -86,15 +85,16 @@ namespace SsmClient.Example
                     }
                 };
 
+                // Get activities for ranges
                 var activities = client.GetActivities(ranges.ToArray());
-
+                
                 var subActivities = new List<ActivityChangeItemDto>
                 {
                     new ActivityChangeItemDto
                     {
                        @from = ToUnixTimeStamp(twoDaysAgo),
                        to = ToUnixTimeStamp(twoDaysAgo.AddMinutes(15)),
-                        id = activities.First().id,
+                        id = activitiId, // Original activity id
                         projectId = null,
                         note = "Firts part"
                     },
@@ -103,7 +103,7 @@ namespace SsmClient.Example
                     {
                        @from = ToUnixTimeStamp(twoDaysAgo.AddMinutes(15)),
                        to = ToUnixTimeStamp(twoDaysAgo.AddMinutes(45)),
-                        id = null,
+                        id = null, // If id is null then trim this time range from original activity
                         projectId = null,
                         note = "Trim part"
                     },
@@ -112,19 +112,16 @@ namespace SsmClient.Example
                     {
                        @from = ToUnixTimeStamp(twoDaysAgo.AddMinutes(45)),
                        to = ToUnixTimeStamp(twoDaysAgo.AddMinutes(60)),
-                        id = Guid.NewGuid(),
+                        id = Guid.NewGuid(), // New activity
                         projectId = null,
                         note = "Second part"
                     }
                 };
 
-                client.SplitActivityExact(new SplitActivityDto {id = activities.First().id, items = subActivities.ToArray()});
+                client.SplitActivityExact(new SplitActivityDto {id = activitiId, items = subActivities.ToArray()});
                     
                 var screenshots = client.GetScreenshots(activities.Select(a => a.id).ToArray());
-
             }
-            
-            Console.WriteLine("End...");
 
             Console.ReadLine();
         }
