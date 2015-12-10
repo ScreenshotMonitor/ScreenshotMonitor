@@ -1,3 +1,3 @@
 # ScreenshotMonitor.NET
 (beta) Screenshot Monitor API C# client 
-https://screenshotmonitor.com/apidoc
+for https://screenshotmonitor.com/apidoc
